@@ -1,5 +1,6 @@
 import os
 
+import peewee_async
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 settings = {
@@ -22,3 +23,8 @@ settings = {
     }
 
 }
+
+
+database = peewee_async.MySQLDatabase(
+    'forum', host="127.0.0.1", port=3306, user="root", password="root"
+)
