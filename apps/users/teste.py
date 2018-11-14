@@ -32,6 +32,19 @@ def test_register():
     return json.loads(res.text)
 
 
+def test_login():
+    url = "{}/login/".format(web_url)
+    data = {
+        "mobile": "13770315931",
+        "password": "admin123"
+    }
+    res = requests.post(url, json=data)
+
+    print(json.loads(res.text))
+    return json.loads(res.text)
+
+
 if __name__ == "__main__":
-    test_sms()
+    # test_sms()
     # test_register()
+    test_login()

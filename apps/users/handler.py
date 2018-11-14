@@ -1,13 +1,62 @@
 import json
 from random import choice
+from datetime import datetime
+import jwt
 
-from apps.users.forms import SmsCodeForm, RegisterForm
+from apps.users.forms import SmsCodeForm, RegisterForm, LoginForm
 from apps.users.models import User
 from apps.utils.AsyncYunPian import AsyncYunPian
 from TornadoForum.handler import RedisHandler
 
 
+class SmsHandler(RedisHandler):
+    """用户注册"""
+
+    # 生成随机的验证码
+    def get_code(self):
+        seeds = "1234567890"
+        random_str = []
+        for i in range(4):
+            random_str.append(choice(seeds))
+        return "".join(random_str)
+
+    async def post(self, *args, **kwargs):
+
+        re_data = {}
+
+        params = self.request.body.decode('utf-8')
+        params = json.loads(params)
+
+        # 使用 wtforms_json 打猴子补丁 解决参数格式化错误问题
+        sms_form = SmsCodeForm.from_json(params)
+
+        if sms_form.validate():
+            code = self.get_code()
+            mobile = sms_form.mobile.data
+
+            yun_pian = AsyncYunPian("7b14af96096b7f9f12ed467d21102fab")
+            res_json = await yun_pian.send_single_sms(code, mobile)
+
+            if res_json["code"] != 0:
+                self.set_status(400)
+                re_data["mobile"] = res_json["msg"]
+
+            else:
+                # 将验证码和手机号作为键存储到 redis 设置过期时间十分钟
+                self.redis_conn.set(f"{mobile}_{code}", 1, 10 * 60)
+
+        else:
+
+            self.set_status(400)
+
+            for field in sms_form.errors:
+                re_data[field] = sms_form.errors[field][0]
+
+        self.finish(re_data)
+
+
 class RegisterHandler(RedisHandler):
+    """发送短信"""
 
     async def post(self, *args, **kwargs):
 
@@ -51,46 +100,53 @@ class RegisterHandler(RedisHandler):
         self.finish(re_data)
 
 
-class SmsHandler(RedisHandler):
-
-    # 生成随机的验证码
-    def get_code(self):
-        seeds = "1234567890"
-        random_str = []
-        for i in range(4):
-            random_str.append(choice(seeds))
-        return "".join(random_str)
+class LoginHandler(RedisHandler):
+    """用户登录"""
 
     async def post(self, *args, **kwargs):
-
         re_data = {}
 
-        params = self.request.body.decode('utf-8')
+        params = self.request.body.decode("utf-8")
         params = json.loads(params)
 
-        # 使用 wtforms_json 打猴子补丁 解决参数格式化错误问题
-        sms_form = SmsCodeForm.from_json(params)
+        login_form = LoginForm.from_json(params)
 
-        if sms_form.validate():
-            code = self.get_code()
-            mobile = sms_form.mobile.data
+        if login_form.validate():
+            mobile = login_form.mobile.data
+            password = login_form.password.data
 
-            yun_pian = AsyncYunPian("7b14af96096b7f9f12ed467d21102fab")
-            res_json = await yun_pian.send_single_sms(code, mobile)
+            try:
+                user = await self.application.objects.get(User, mobile=mobile)
 
-            if res_json["code"] != 0:
+                # 密码加密不可逆 将密码加密之后进行重新比较
+                if user.password.check_password(password):
+
+                    # 构建 json web token
+                    # 设置过期时间要设置 UTC 时间 因为内部检查使用的也是 UTC 时间
+                    payload = {
+                        "id": user.id,
+                        "nick_name": user.nick_name,
+                        "exp": datetime.utcnow()
+                    }
+
+                    token = jwt.encode(payload, self.settings["secret_key"], algorithm='HS256')
+
+                    re_data["id"] = user.id
+
+                    if user.nick_name is not None:
+                        re_data["nick_name"] = user.nick_name
+                    else:
+                        re_data["nick_name"] = user.mobile
+
+                    re_data["token"] = token.decode("utf8")  # 将byte 类型 decode成utf-8格式
+
+                else:
+
+                    self.set_status(400)
+                    re_data["non_fields"] = "用户名或密码错误"
+
+            except User.DoesNotExist as e:
                 self.set_status(400)
-                re_data["mobile"] = res_json["msg"]
+                re_data["mobile"] = "用户不存在"
 
-            else:
-                # 将验证码和手机号作为键存储到 redis 设置过期时间十分钟
-                self.redis_conn.set(f"{mobile}_{code}", 1, 10 * 60)
-
-        else:
-
-            self.set_status(400)
-
-            for field in sms_form.errors:
-                re_data[field] = sms_form.errors[field][0]
-
-        self.finish(re_data)
+            self.finish(re_data)

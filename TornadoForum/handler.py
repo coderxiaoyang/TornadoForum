@@ -8,6 +8,7 @@ class BaseHandler(RequestHandler):
     后续使用前后端分离 我们需要在请求头中加入一个 会话id tsessionid
     因此我们需要在 Access-Control-Allow-Headers 增加这个 tsessionid
     """
+
     def set_default_headers(self):
         self.set_header('Access-Control-Allow-Origin', '*')
         self.set_header('Access-Control-Allow-Headers', '*')
