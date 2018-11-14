@@ -35,7 +35,7 @@ def test_register():
 def test_login():
     url = "{}/login/".format(web_url)
     data = {
-        "mobile": "13770315931",
+        "mobile": "13777385931",
         "password": "admin123"
     }
     res = requests.post(url, json=data)
