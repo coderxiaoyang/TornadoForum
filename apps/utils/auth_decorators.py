@@ -21,6 +21,8 @@ def authenticated_async(method):
                 # 从数据库中获取到user并设置给_current_user
                 try:
                     user = await self.application.objects.get(User, id=user_id)
+
+                    # 之所以赋值给  _current_user 是为了使用 self.current_user
                     self._current_user = user
 
                     # 此处需要使用协程方式执行 因为需要装饰的是一个协程
@@ -28,11 +30,20 @@ def authenticated_async(method):
 
                 except User.DoesNotExist as e:
                     self.set_status(401)
+                    self.finish({
+                        "msg": "用户不存在"
+                    })
 
             except jwt.ExpiredSignatureError as e:
                 self.set_status(401)
+                self.finish({
+                    "msg": "Token过期"
+                })
         else:
             self.set_status(401)
-        self.finish({})
+
+            self.finish({
+                "msg": "请传Token"
+            })
 
     return wrapper
