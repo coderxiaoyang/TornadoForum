@@ -1,20 +1,60 @@
 import os
+import json
 import uuid
 
 import aiofiles
+from playhouse.shortcuts import model_to_dict
 
 from TornadoForum.handler import RedisHandler
 from apps.utils.auth_decorators import authenticated_async
 from apps.community.forms import CommunityGroupForm
 from apps.community.models import CommunityGroup, CommunityGroupMember
+from apps.utils.utils_func import json_serial
 
 
 class GroupHandler(RedisHandler):
 
     async def get(self, *args, **kwargs):
-        self.finish({
-            "code": 100
-        })
+
+        re_data = []
+
+        community_query = CommunityGroup.extend()
+
+        # 根据类别过滤
+        c = self.get_argument('c', None)
+        if c:
+            community_query = community_query.filter(
+                CommunityGroup.category == c
+            )
+
+        # 根据参数排序
+        order = self.get_argument('o', None)
+        if order:
+            if order == "new":
+                community_query = community_query.order_by(
+                    CommunityGroup.add_time.desc()
+                )
+
+            if order == "hot":
+                community_query = community_query.order_by(
+                    CommunityGroup.member_nums.desc()
+                )
+
+        # 返回指定数量
+        limit = self.get_argument("limit", None)
+        if limit:
+            community_query = community_query.limit(int(limit))
+
+        groups = await self.application.objects.execute(community_query)
+
+        for group in groups:
+            group_dict = model_to_dict(group)
+            group_dict["front_image"] = f"{self.settings['SITE_URL']}/media/{group_dict['front_image']}/"
+            re_data.append(group_dict)
+
+        self.finish(json.dumps(re_data, default=json_serial))
+
+
 
     @authenticated_async
     async def post(self, *args, **kwargs):
