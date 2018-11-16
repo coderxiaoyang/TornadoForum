@@ -7,8 +7,8 @@ from playhouse.shortcuts import model_to_dict
 
 from TornadoForum.handler import RedisHandler
 from apps.utils.auth_decorators import authenticated_async
-from apps.community.forms import CommunityGroupForm, GroupApplyForm
-from apps.community.models import CommunityGroup, CommunityGroupMember
+from apps.community.forms import CommunityGroupForm, GroupApplyForm, PostForm
+from apps.community.models import CommunityGroup, CommunityGroupMember, Post
 from apps.utils.utils_func import json_serial
 
 
@@ -165,5 +165,55 @@ class GroupDetailHanlder(RedisHandler):
 
         except CommunityGroup.DoesNotExist as e:
             self.set_status(404)
+
+        self.finish(re_data)
+
+
+class PostHandler(RedisHandler):
+    """帖子相关接口"""
+    @authenticated_async
+    async def get(self, *args, **kwargs):
+        pass
+
+    @authenticated_async
+    async def post(self, group_id, *args, **kwargs):
+
+        re_data = {}
+
+        try:
+            group = await self.application.objects.get(CommunityGroup, id=int(group_id))
+
+            # 检查发帖的用户是否已经加入小组
+            group_member = await self.application.objects.get(CommunityGroupMember, user=self.current_user,
+                                                              community=group, status="agree")
+
+            param = self.request.body.decode("utf8")
+            param = json.loads(param)
+            form = PostForm.from_json(param)
+
+            if form.validate():
+
+                post = await self.application.objects.create(Post,
+                                                             user=self.current_user,
+                                                             title=form.title.data,
+                                                             content=form.content.data,
+                                                             group=group)
+                re_data["id"] = post.id
+
+            else:
+
+                self.set_status(400)
+                for field in form.errors:
+                    re_data[field] = form.errors[field][0]
+
+        except CommunityGroup.DoesNotExist as e:
+
+            self.set_status(404)
+            re_data["msg"] = "小组不存在"
+
+        except CommunityGroupMember.DoesNotExist as e:
+
+            self.set_status(403)
+            re_data["msg"] = "你未加入到改小组"
 
         self.finish(re_data)
