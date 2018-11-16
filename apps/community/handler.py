@@ -7,8 +7,8 @@ from playhouse.shortcuts import model_to_dict
 
 from TornadoForum.handler import RedisHandler
 from apps.utils.auth_decorators import authenticated_async
-from apps.community.forms import CommunityGroupForm, GroupApplyForm, PostForm
-from apps.community.models import CommunityGroup, CommunityGroupMember, Post
+from apps.community.forms import CommunityGroupForm, GroupApplyForm, PostForm, PostComentForm
+from apps.community.models import CommunityGroup, CommunityGroupMember, Post, PostComment, CommentLike
 from apps.utils.utils_func import json_serial
 
 
@@ -266,7 +266,6 @@ class PostDetailHandler(RedisHandler):
         re_count = 0
 
         for data in post_details:
-
             item_dict = {}
             item_dict["user"] = model_to_dict(data.user)
             item_dict["title"] = data.title
@@ -281,3 +280,67 @@ class PostDetailHandler(RedisHandler):
             self.set_status(404)
 
         self.finish(json.dumps(re_data, default=json_serial))
+
+
+class PostCommentHanlder(RedisHandler):
+    @authenticated_async
+    async def get(self, post_id, *args, **kwargs):
+        # 获取帖子的所有评论
+        re_data = []
+
+        try:
+            post = await self.application.objects.get(Post, id=int(post_id))
+            post_coments = await self.application.objects.execute(
+                PostComment.extend().where(PostComment.post == post, PostComment.parent_comment.is_null(True)).order_by(
+                    PostComment.add_time.desc())
+            )
+
+            for item in post_coments:
+                has_liked = False
+                try:
+                    comments_like = await self.application.objects.get(CommentLike, post_comment_id=item.id,
+                                                                       user_id=self.current_user.id)
+                    has_liked = True
+                except CommentLike.DoesNotExist:
+                    pass
+
+                item_dict = {
+                    "user": model_to_dict(item.user),
+                    "content": item.content,
+                    "reply_nums": item.reply_nums,
+                    "like_nums": item.like_nums,
+                    "has_liked": has_liked,
+                    "id": item.id,
+                }
+
+                re_data.append(item_dict)
+        except Post.DoesNotExist as e:
+            self.set_status(404)
+        self.finish(self.finish(json.dumps(re_data, default=json_serial)))
+
+    @authenticated_async
+    async def post(self, post_id, *args, **kwargs):
+        # 新增评论
+        re_data = {}
+        param = self.request.body.decode("utf8")
+        param = json.loads(param)
+        form = PostComentForm.from_json(param)
+        if form.validate():
+            try:
+                post = await self.application.objects.get(Post, id=int(post_id))
+                post_comment = await self.application.objects.create(PostComment, user=self.current_user, post=post,
+                                                                     content=form.content.data)
+                post.comment_nums += 1
+                await self.application.objects.update(post)
+                re_data["id"] = post_comment.id
+                re_data["user"] = {}
+                re_data["user"]["nick_name"] = self.current_user.nick_name
+                re_data["user"]["id"] = self.current_user.id
+            except Post.DoesNotExist as e:
+                self.set_status(404)
+        else:
+            self.set_status(400)
+            for field in form.errors:
+                re_data[field] = form.errors[field][0]
+
+        self.finish(re_data)

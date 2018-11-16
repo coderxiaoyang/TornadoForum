@@ -64,6 +64,18 @@ class PostComment(BaseModel):
     reply_nums = IntegerField(default=0, verbose_name="回复数")
     like_nums = IntegerField(default=0, verbose_name="点赞数")
 
+    @classmethod
+    def extend(cls):
+        # 1. 多表join
+        # 2. 多字段映射同一个model
+        author = User.alias()
+        relyed_user = User.alias()
+        return cls.select(cls, Post, relyed_user.id, relyed_user.nick_name, author.id, author.nick_name).join(
+            Post, join_type=JOIN.LEFT_OUTER, on=cls.post).switch(cls).join(author, join_type=JOIN.LEFT_OUTER,
+                                                                           on=cls.user).switch(cls).join(
+            relyed_user, join_type=JOIN.LEFT_OUTER, on=cls.reply_user
+        )
+
 
 class CommentLike(BaseModel):
     # 评论点赞
