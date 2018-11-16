@@ -62,11 +62,26 @@ def apply_group(group_id, apply_reason):
     return json.loads(res.text)
 
 
+def get_group_detail(group_id):
+
+    token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MSwibmlja19uYW1lIjoiXHU3ZWEyXHU3MGU3XHU4MDg5IiwiZXhwIjoxNTQyMjYyOTk5fQ._CyxwhZi--rFbIR6KQg-daGLlfMLqaoWRoj1q29CKoQ'
+
+    headers = {
+        "tsessionid": token
+    }
+
+    res = requests.get(f"{web_url}/groups/{group_id}/", headers=headers)
+    print(res.status_code)
+    print(json.loads(res.text))
+    return json.loads(res.text)
+
+
 if __name__ == '__main__':
     # get_group()
 
     # create_group()
 
-    apply_group(7, "测试一下")
+    # apply_group(7, "测试一下")
+    get_group_detail(7)
 
     pass

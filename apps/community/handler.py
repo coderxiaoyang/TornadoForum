@@ -146,5 +146,24 @@ class GroupMemberHandler(RedisHandler):
         self.finish(re_data)
 
 
+class GroupDetailHanlder(RedisHandler):
+    """获得小组详情接口"""
 
+    @authenticated_async
+    async def get(self, group_id, *args, **kwargs):
+        re_data = {}
+        try:
+            group = await self.application.objects.get(CommunityGroup, id=int(group_id))
 
+            re_data["name"] = group.name
+            re_data["id"] = group.id
+            re_data["desc"] = group.desc
+            re_data["notice"] = group.notice
+            re_data["member_nums"] = group.member_nums
+            re_data["post_nums"] = group.post_nums
+            re_data["front_image"] = "{}/media/{}/".format(self.settings["SITE_URL"], group.front_image)
+
+        except CommunityGroup.DoesNotExist as e:
+            self.set_status(404)
+
+        self.finish(re_data)
