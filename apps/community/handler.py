@@ -171,9 +171,46 @@ class GroupDetailHanlder(RedisHandler):
 
 class PostHandler(RedisHandler):
     """帖子相关接口"""
+
     @authenticated_async
-    async def get(self, *args, **kwargs):
-        pass
+    async def get(self, group_id, *args, **kwargs):
+        post_list = []
+        try:
+
+            group = await self.application.objects.get(CommunityGroup, id=int(group_id))
+
+            group_member = await self.application.objects.get(CommunityGroupMember, user=self.current_user,
+                                                              community=group, status="agree")
+            # 存在外键关联的时候需要进行 join 操作
+            posts_query = Post.extend()
+
+            c = self.get_argument("cate", None)
+            if c == "hot":
+                posts_query = posts_query.filter(Post.is_hot == True)
+            if c == "excellent":
+                posts_query = posts_query.filter(Post.is_excellent == True)
+
+            posts = await self.application.objects.execute(posts_query)
+
+            for post in posts:
+                item_dict = {
+                    "user": {
+                        "id": post.user.id,
+                        "nick_name": post.user.nick_name
+                    },
+                    "id": post.id,
+                    "title": post.title,
+                    "content": post.content,
+                    "comment_nums": post.comment_nums
+                }
+                post_list.append(item_dict)
+        except CommunityGroupMember.DoesNotExist as e:
+            self.set_status(403)
+
+        except CommunityGroup.DoesNotExist as e:
+            self.set_status(404)
+
+        self.finish(json.dumps(post_list))
 
     @authenticated_async
     async def post(self, group_id, *args, **kwargs):
