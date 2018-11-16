@@ -40,14 +40,33 @@ def create_group():
         "tsessionid": token
     }, data=data, files=files)
 
-
     print(res.status_code)
     print(json.loads(res.text))
 
     return json.loads(res.text)
 
 
+def apply_group(group_id, apply_reason):
+    token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MSwibmlja19uYW1lIjoiXHU3ZWEyXHU3MGU3XHU4MDg5IiwiZXhwIjoxNTQyMjYyOTk5fQ._CyxwhZi--rFbIR6KQg-daGLlfMLqaoWRoj1q29CKoQ'
+
+    headers = {
+        "tsessionid": token
+    }
+    apply_reason = "测试一下"
+    data = {
+        "apply_reason": apply_reason,
+    }
+    res = requests.post(f"{web_url}/groups/{group_id}/members/", headers=headers, json=data)
+    print(res.status_code)
+    print(json.loads(res.text))
+    return json.loads(res.text)
+
+
 if __name__ == '__main__':
     # get_group()
 
-    create_group()
+    # create_group()
+
+    apply_group(7, "测试一下")
+
+    pass

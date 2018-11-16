@@ -7,12 +7,13 @@ from playhouse.shortcuts import model_to_dict
 
 from TornadoForum.handler import RedisHandler
 from apps.utils.auth_decorators import authenticated_async
-from apps.community.forms import CommunityGroupForm
+from apps.community.forms import CommunityGroupForm, GroupApplyForm
 from apps.community.models import CommunityGroup, CommunityGroupMember
 from apps.utils.utils_func import json_serial
 
 
 class GroupHandler(RedisHandler):
+    """小组列表和新增接口"""
 
     async def get(self, *args, **kwargs):
 
@@ -53,8 +54,6 @@ class GroupHandler(RedisHandler):
             re_data.append(group_dict)
 
         self.finish(json.dumps(re_data, default=json_serial))
-
-
 
     @authenticated_async
     async def post(self, *args, **kwargs):
@@ -98,3 +97,54 @@ class GroupHandler(RedisHandler):
                 re_data[field] = community_form.errors[field][0]
 
         self.finish(re_data)
+
+
+class GroupMemberHandler(RedisHandler):
+    """小组加入接口"""
+
+    @authenticated_async
+    async def post(self, group_id, *args, **kwargs):
+        """申请加入小组接口"""
+        re_data = {}
+
+        params = self.request.body.decode('utf-8')
+
+        params = json.loads(params)
+
+        applyform = GroupApplyForm.from_json(params)
+
+        if applyform.validate():
+
+            try:
+                group = await self.application.objects.get(CommunityGroup, id=int(group_id))
+
+                existed = await self.application.objects.get(CommunityGroupMember, community=group,
+                                                             user=self.current_user)
+                # 如果没有异常抛出 证明已经加入
+                self.set_status(400)
+                re_data["non_fields"] = "用户已经加入"
+
+            except CommunityGroup.DoesNotExist as e:
+                self.set_status(404)
+                re_data["group"] = "小组不存在"
+
+            except CommunityGroupMember.DoesNotExist as e:
+
+                community_member = await self.application.objects.create(CommunityGroupMember,
+                                                                         community=group,
+                                                                         user=self.current_user,
+                                                                         apply_reason=applyform.apply_reason.data)
+
+                re_data["id"] = community_member.id
+
+        else:
+
+            self.set_status(400)
+            for field in applyform.errors:
+                re_data[field] = applyform.errors[field][0]
+
+        self.finish(re_data)
+
+
+
+
