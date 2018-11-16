@@ -254,3 +254,30 @@ class PostHandler(RedisHandler):
             re_data["msg"] = "你未加入到改小组"
 
         self.finish(re_data)
+
+
+class PostDetailHandler(RedisHandler):
+    @authenticated_async
+    async def get(self, post_id, *args, **kwargs):
+        """获取某一个帖子的详情"""
+        re_data = {}
+
+        post_details = await self.application.objects.execute(Post.extend().where(Post.id == int(post_id)))
+        re_count = 0
+
+        for data in post_details:
+
+            item_dict = {}
+            item_dict["user"] = model_to_dict(data.user)
+            item_dict["title"] = data.title
+            item_dict["content"] = data.content
+            item_dict["comment_nums"] = data.comment_nums
+            item_dict["add_time"] = data.add_time.strftime("%Y-%m-%d")
+            re_data = item_dict
+
+            re_count += 1
+
+        if re_count == 0:
+            self.set_status(404)
+
+        self.finish(json.dumps(re_data, default=json_serial))
