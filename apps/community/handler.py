@@ -6,8 +6,9 @@ import aiofiles
 from playhouse.shortcuts import model_to_dict
 
 from TornadoForum.handler import RedisHandler
+from apps.users.models import User
 from apps.utils.auth_decorators import authenticated_async
-from apps.community.forms import CommunityGroupForm, GroupApplyForm, PostForm, PostComentForm
+from apps.community.forms import CommunityGroupForm, GroupApplyForm, PostForm, PostComentForm, CommentReplyForm
 from apps.community.models import CommunityGroup, CommunityGroupMember, Post, PostComment, CommentLike
 from apps.utils.utils_func import json_serial
 
@@ -316,7 +317,7 @@ class PostCommentHanlder(RedisHandler):
                 re_data.append(item_dict)
         except Post.DoesNotExist as e:
             self.set_status(404)
-        self.finish(self.finish(json.dumps(re_data, default=json_serial)))
+        self.finish(json.dumps(re_data, default=json_serial))
 
     @authenticated_async
     async def post(self, post_id, *args, **kwargs):
@@ -342,5 +343,87 @@ class PostCommentHanlder(RedisHandler):
             self.set_status(400)
             for field in form.errors:
                 re_data[field] = form.errors[field][0]
+
+        self.finish(re_data)
+
+
+class CommentReplyHandler(RedisHandler):
+
+    @authenticated_async
+    async def get(self, comment_id, *args, **kwargs):
+        """获得某个评论的回复"""
+
+        re_data = []
+        comment_replys = await self.application.objects.execute(
+            PostComment.extend().where(PostComment.parent_comment_id == int(comment_id)))
+        for item in comment_replys:
+            item_dict = {
+                "user": model_to_dict(item.user),
+                "content": item.content,
+                "reply_nums": item.reply_nums,
+                "add_time": item.add_time.strftime("%Y-%m-%d"),
+                "id": item.id
+            }
+            re_data.append(item_dict)
+        self.finish(json.dumps(re_data, default=json_serial))
+
+    @authenticated_async
+    async def post(self, comment_id, *args, **kwargs):
+        """提交评论的回复"""
+
+        # 添加回复
+        re_data = {}
+        param = self.request.body.decode("utf8")
+        param = json.loads(param)
+        form = CommentReplyForm.from_json(param)
+        if form.validate():
+            try:
+                comment = await self.application.objects.get(PostComment, id=int(comment_id))
+
+                replyed_user = await self.application.objects.get(User, id=form.replyed_user.data)
+                reply = await self.application.objects.create(PostComment,
+                                                              user=self.current_user,
+                                                              parent_comment=comment,
+                                                              post_id=comment.post_id,
+                                                              replyed_user=replyed_user,
+                                                              content=form.content.data)
+                # 修改comment的回复数
+                comment.reply_nums += 1
+                await self.application.objects.update(comment)
+
+                re_data["id"] = reply.id
+                re_data["user"] = {
+                    "id": self.current_user.id,
+                    "nick_name": self.current_user.nick_name
+                }
+            except PostComment.DoesNotExist as e:
+                self.set_status(404)
+            except User.DoesNotExist as e:
+                self.set_status(400)
+                re_data["replyed_user"] = "用户不存在"
+        else:
+            self.set_status(400)
+            for field in form.errors:
+                re_data[field] = form.errors[field][0]
+        self.finish(re_data)
+
+
+class CommentsLikeHanlder(RedisHandler):
+    """点赞"""
+
+    @authenticated_async
+    async def post(self, comment_id, *args, **kwargs):
+        re_data = {}
+        try:
+            comment = await self.application.objects.get(PostComment, id=int(comment_id))
+            comment_like = await self.application.objects.create(CommentLike, user=self.current_user,
+                                                                 post_comment=comment)
+            comment.like_nums += 1
+            await self.application.objects.update(comment)
+
+            re_data["id"] = comment_like.id
+
+        except PostComment.DoesNotExist as e:
+            self.set_status(404)
 
         self.finish(re_data)

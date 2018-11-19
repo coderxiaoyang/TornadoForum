@@ -22,3 +22,9 @@ class PostForm(Form):
 class PostComentForm(Form):
     content = StringField("内容", validators=[DataRequired("请输入评论内容"),
                                             Length(min=3, message="内容不能少于3个字符")])
+
+
+class CommentReplyForm(Form):
+    replyed_user = IntegerField("回复用户", validators=[DataRequired("请输入回复用户")])
+    content = StringField("内容", validators=[DataRequired("请输入评论内容"),
+                                            Length(min=3, message="内容不能少于3个字符")])
