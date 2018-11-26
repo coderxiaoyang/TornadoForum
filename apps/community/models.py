@@ -56,10 +56,10 @@ class Post(BaseModel):
 
 class PostComment(BaseModel):
     # 评论和回复
-    user = ForeignKeyField(User, verbose_name="用户", related_name="author")
+    user = ForeignKeyField(User, verbose_name="用户", related_name="post_author")
     post = ForeignKeyField(Post, verbose_name="帖子")
     parent_comment = ForeignKeyField('self', null=True, verbose_name="评论", related_name="comments_parent")
-    reply_user = ForeignKeyField(User, verbose_name="用户", related_name="replyed_author", null=True)
+    reply_user = ForeignKeyField(User, verbose_name="用户", related_name="reply_author", null=True)
     content = CharField(max_length=1000, verbose_name="内容")
     reply_nums = IntegerField(default=0, verbose_name="回复数")
     like_nums = IntegerField(default=0, verbose_name="点赞数")
