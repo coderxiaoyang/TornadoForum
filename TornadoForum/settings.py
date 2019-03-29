@@ -1,3 +1,5 @@
+"""配置文件"""
+
 import os
 
 import peewee_async
@@ -23,7 +25,6 @@ settings = {
     }
 
 }
-
 
 database = peewee_async.MySQLDatabase(
     'forum', host="127.0.0.1", port=3306, user="root", password="love"

@@ -10,7 +10,7 @@ from TornadoForum.handler import RedisHandler
 
 
 class SmsHandler(RedisHandler):
-    """用户注册"""
+    """用户注册发送验证码"""
 
     # 生成随机的验证码
     def get_code(self):
@@ -28,6 +28,7 @@ class SmsHandler(RedisHandler):
         params = json.loads(params)
 
         # 使用 wtforms_json 打猴子补丁 解决参数格式化错误问题
+        # 错误原因是因为现在传入的是一个字符串类型 不再是列表类型了
         sms_form = SmsCodeForm.from_json(params)
 
         if sms_form.validate():

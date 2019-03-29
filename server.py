@@ -23,6 +23,8 @@ if __name__ == '__main__':
     app.objects = objects
 
     app.listen(8800)
+    print("listen on 8800")
 
     ioloop.IOLoop.current().start()
+
 

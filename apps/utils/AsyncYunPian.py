@@ -21,7 +21,7 @@ class AsyncYunPian:
         url = "http://sms.yunpian.com/v2/sms/single_send.json"
         text = "【慕课实战】您的验证码是{}。如非本人操作，请忽略本短信".format(code)
 
-        # 使用 HTTPRequest 构建请求
+        # 使用 HTTPRequest 构建 fetch 的 request请求
         # 使用 urlencode 将参数进行编码下
         post_request = httpclient.HTTPRequest(url=url, method="POST", body=urlencode({
             "apikey": self.api_key,
@@ -38,6 +38,7 @@ if __name__ == "__main__":
 
     yun_pian = AsyncYunPian("7b14af96096b7f9f0ced461112822fab")
 
+    # 因为 run_sync 只能传递一个函数名称进去
     # 通过 partial 可以将带参数的函数重新组装成一个函数
     new_func = partial(yun_pian.send_single_sms, "1234", "13788765423")
 

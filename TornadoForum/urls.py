@@ -1,3 +1,5 @@
+"""主的URL收集文件"""
+
 from tornado.web import url
 from tornado.web import StaticFileHandler
 
@@ -13,6 +15,7 @@ urlpattern = [
 
 urlpattern += user_urls.urlpattern
 urlpattern += community_urls.urlpattern
+
 # 集成ueditor注意事项 前端的域名和后端的域名保持一致
 urlpattern += ueditor_urls.urlpattern
 urlpattern += question_urls.urlpattern
