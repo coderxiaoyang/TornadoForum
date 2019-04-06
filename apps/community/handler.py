@@ -20,37 +20,36 @@ class GroupHandler(RedisHandler):
 
         re_data = []
 
+        # 获得初步的SQL查询
         community_query = CommunityGroup.extend()
 
         # 根据类别过滤
         c = self.get_argument('c', None)
         if c:
-            community_query = community_query.filter(
-                CommunityGroup.category == c
-            )
+            community_query = community_query.filter(CommunityGroup.category == c)
 
         # 根据参数排序
         order = self.get_argument('o', None)
         if order:
             if order == "new":
-                community_query = community_query.order_by(
-                    CommunityGroup.add_time.desc()
-                )
+                community_query = community_query.order_by(CommunityGroup.add_time.desc())
 
             if order == "hot":
-                community_query = community_query.order_by(
-                    CommunityGroup.member_nums.desc()
-                )
+                community_query = community_query.order_by(CommunityGroup.member_nums.desc())
 
         # 返回指定数量
         limit = self.get_argument("limit", None)
         if limit:
             community_query = community_query.limit(int(limit))
 
+        # 最终执行SQL查询 community_query 只是一个查询对象
         groups = await self.application.objects.execute(community_query)
 
         for group in groups:
+            # 使用 model_to_dict 将查询的数据模型返回成字典
             group_dict = model_to_dict(group)
+
+            # 返回完整的文件地址
             group_dict["front_image"] = f"{self.settings['SITE_URL']}/media/{group_dict['front_image']}/"
             re_data.append(group_dict)
 
@@ -225,8 +224,8 @@ class PostHandler(RedisHandler):
             group = await self.application.objects.get(CommunityGroup, id=int(group_id))
 
             # 检查发帖的用户是否已经加入小组
-            group_member = await self.application.objects.get(CommunityGroupMember, user=self.current_user,
-                                                              community=group, status="agree")
+            group_member = await self.application.objects.get(
+                CommunityGroupMember, user=self.current_user, community=group, status="agree")
 
             param = self.request.body.decode("utf8")
             param = json.loads(param)
@@ -271,6 +270,7 @@ class PostDetailHandler(RedisHandler):
 
         for data in post_details:
             item_dict = {}
+            # 只对用户模型转换
             item_dict["user"] = model_to_dict(data.user)
             item_dict["title"] = data.title
             item_dict["content"] = data.content
@@ -326,9 +326,11 @@ class PostCommentHanlder(RedisHandler):
     async def post(self, post_id, *args, **kwargs):
         # 新增评论
         re_data = {}
+
         param = self.request.body.decode("utf8")
         param = json.loads(param)
         form = PostComentForm.from_json(param)
+
         if form.validate():
             try:
                 post = await self.application.objects.get(Post, id=int(post_id))
@@ -376,21 +378,24 @@ class CommentReplyHandler(RedisHandler):
 
         # 添加回复
         re_data = {}
+
         param = self.request.body.decode("utf8")
         param = json.loads(param)
         form = CommentReplyForm.from_json(param)
+
         if form.validate():
             try:
                 comment = await self.application.objects.get(PostComment, id=int(comment_id))
 
                 replyed_user = await self.application.objects.get(User, id=form.replyed_user.data)
+
                 reply = await self.application.objects.create(PostComment,
                                                               user=self.current_user,
                                                               parent_comment=comment,
                                                               post_id=comment.post_id,
                                                               replyed_user=replyed_user,
                                                               content=form.content.data)
-                # 修改comment的回复数
+                # 更新comment的回复数
                 comment.reply_nums += 1
                 await self.application.objects.update(comment)
 
@@ -421,6 +426,7 @@ class CommentsLikeHanlder(RedisHandler):
             comment = await self.application.objects.get(PostComment, id=int(comment_id))
             comment_like = await self.application.objects.create(CommentLike, user=self.current_user,
                                                                  post_comment=comment)
+            # 更新评论数
             comment.like_nums += 1
             await self.application.objects.update(comment)
 

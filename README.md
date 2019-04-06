@@ -9,4 +9,8 @@
 
 使用 PyJWT 配置 JWT 登录方式
 
-实用 aiofiles 保存图片文件
+使用 aiofiles 保存图片文件
+
+使用 model_to_dict 将模型转为字典形式 注意 存在外键情况
+
+使用 ueditor 富文本编辑器 

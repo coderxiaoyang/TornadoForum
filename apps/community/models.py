@@ -20,6 +20,7 @@ class CommunityGroup(BaseModel):
 
     @classmethod
     def extend(cls):
+        # 与User表关联起来 并且只查询 User.id, User.nick_name
         return cls.select(cls, User.id, User.nick_name).join(User)
 
 
@@ -59,7 +60,7 @@ class PostComment(BaseModel):
     user = ForeignKeyField(User, verbose_name="用户", related_name="post_author")
     post = ForeignKeyField(Post, verbose_name="帖子")
     parent_comment = ForeignKeyField('self', null=True, verbose_name="评论", related_name="comments_parent")
-    reply_user = ForeignKeyField(User, verbose_name="用户", related_name="reply_author", null=True)
+    reply_user = ForeignKeyField(User, verbose_name="回复哪个用户", related_name="reply_author", null=True)
     content = CharField(max_length=1000, verbose_name="内容")
     reply_nums = IntegerField(default=0, verbose_name="回复数")
     like_nums = IntegerField(default=0, verbose_name="点赞数")
@@ -67,7 +68,7 @@ class PostComment(BaseModel):
     @classmethod
     def extend(cls):
         # 1. 多表join
-        # 2. 多字段映射同一个model
+        # 2. 多字段映射同一个model (user, reply_user)
         author = User.alias()
         relyed_user = User.alias()
         return cls.select(cls, Post, relyed_user.id, relyed_user.nick_name, author.id, author.nick_name).join(
