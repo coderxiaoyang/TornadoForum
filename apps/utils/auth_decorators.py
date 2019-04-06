@@ -5,11 +5,13 @@ from apps.users.models import User
 
 
 def authenticated_async(method):
+    """在前后端分离的系统中 之前的登录装饰器 authenticated 不再实用"""
     @functools.wraps(method)
     async def wrapper(self, *args, **kwargs):
+        # 从请求头中获取到 我们设置的 token
         tsessionid = self.request.headers.get("tsessionid", None)
-        if tsessionid:
 
+        if tsessionid:
             # 对token过期进行异常捕捉
             try:
 
@@ -23,6 +25,7 @@ def authenticated_async(method):
                     user = await self.application.objects.get(User, id=user_id)
 
                     # 之所以赋值给  _current_user 是为了使用 self.current_user
+                    # 通过 查看 authenticated 源码 我们知道 current_user 是一个动态属性
                     self._current_user = user
 
                     # 此处需要使用协程方式执行 因为需要装饰的是一个协程

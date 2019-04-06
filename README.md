@@ -8,3 +8,5 @@
 使用 redis-py 配置连接redis
 
 使用 PyJWT 配置 JWT 登录方式
+
+实用 aiofiles 保存图片文件
