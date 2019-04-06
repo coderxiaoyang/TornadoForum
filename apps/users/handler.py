@@ -78,7 +78,7 @@ class RegisterHandler(RedisHandler):
             redis_key = f'{mobile}_{code}'
 
             if self.redis_conn.get(redis_key):
-                # 对用户是否存在进行校验
+                # 对用户是否存在进行校验 使用 get 方法 不存在则报错
                 try:
                     existed_user = await self.application.objects.get(User, mobile=mobile)
                     self.set_status(400)

@@ -1,7 +1,7 @@
 """
 用户模型模块
 
-密码的加密解密使用 peewee 之前的功能
+密码的加密解密使用 peewee 之前的 PasswordField 功能
 """
 
 from peewee import *
@@ -16,6 +16,7 @@ class PasswordHash(bytes):
 
 
 class PasswordField(BlobField):
+    """使用之前版本的PasswordField"""
     def __init__(self, iterations=12, *args, **kwargs):
         if None in (hashpw, gensalt):
             raise ValueError('Missing library required for PasswordField: bcrypt')
